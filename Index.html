@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+      body { -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .loader { border-top-color: #ffffff; animation: spinner 1.5s linear infinite; }
+      @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      .fade-in { animation: fadeIn 0.2s ease-in-out; }
+      .hidden { display: none !important; }
+      .skeleton { background: #f3f4f6; position: relative; overflow: hidden; }
+      .skeleton::after { 
+          content: ""; display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+          animation: shimmer 1.5s infinite;
+      }
+      @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+    </style>
+  </head>
+  <body class="bg-gray-100 min-h-screen text-gray-800 pb-10">
+
+    <template id="tpl-trip">
+      <div class="card-trip bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative group overflow-hidden cursor-pointer mb-4 hover:shadow-md transition active:scale-[0.98]">
+         <div class="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
+         <div class="flex justify-between items-start">
+             <div class="flex-1 pl-3">
+                 <h3 class="t-name font-bold text-lg text-gray-800 mb-2">Trip</h3>
+                 <div class="t-mem-container flex flex-wrap gap-1"></div>
+             </div>
+             <div class="flex flex-col gap-2 z-10 pl-2">
+                <button class="btn-edit text-gray-400 hover:text-amber-500 p-2 rounded-full bg-gray-50 hover:bg-amber-50 transition"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn-del text-gray-400 hover:text-red-500 p-2 rounded-full bg-gray-50 hover:bg-red-50 transition"><i class="fa-solid fa-trash"></i></button>
+             </div>
+         </div>
+      </div>
+    </template>
+
+    <template id="tpl-friend">
+      <li class="item-friend flex justify-between items-center bg-white border border-gray-100 px-4 py-3 rounded-xl mb-2 hover:shadow-sm transition">
+          <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-xs"><i class="fa-solid fa-user"></i></div>
+              <span class="f-name font-bold text-gray-700 text-sm"></span>
+          </div>
+          <div class="flex gap-1 items-center">
+              <button class="btn-edit text-gray-400 hover:text-blue-500 p-2"><i class="fa-solid fa-pen text-xs"></i></button>
+              <button class="btn-del text-gray-400 hover:text-red-500 p-2"><i class="fa-solid fa-trash text-xs"></i></button>
+              <div class="w-px h-4 bg-gray-200 mx-1"></div>
+              <button class="btn-up text-gray-400 hover:text-amber-500 p-2"><i class="fa-solid fa-upload text-xs"></i></button>
+              <button class="btn-qr w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 text-gray-300 hover:bg-amber-100 hover:text-amber-600 transition"><i class="fa-solid fa-qrcode text-xs"></i></button>
+          </div>
+      </li>
+    </template>
+
+    <template id="tpl-exp">
+      <div class="card-exp bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-4 transition">
+          <div class="flex justify-between items-start mb-2">
+              <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                      <div class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400"><i class="fa-solid fa-receipt"></i></div>
+                      <div>
+                          <div class="e-desc font-bold text-gray-800 leading-tight"></div>
+                          <div class="flex items-center gap-1 mt-0.5">
+                              <span class="e-payer text-[10px] font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full"></span>
+                              <button class="btn-slip text-amber-500 hidden hover:underline flex items-center gap-1 text-[10px] bg-amber-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-image"></i> Slip</button>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              <div class="text-right">
+                  <div class="e-amt font-bold text-lg text-gray-800 font-mono"></div>
+                  <div class="e-stat text-xs font-bold mt-1"></div>
+                  <div class="flex justify-end gap-2 mt-1">
+                      <button class="btn-edit text-xs text-gray-300 hover:text-amber-500"><i class="fa-solid fa-pen"></i></button>
+                      <button class="btn-del text-xs text-gray-300 hover:text-red-500"><i class="fa-solid fa-trash"></i></button>
+                  </div>
+              </div>
+          </div>
+          <div class="e-list pt-2 border-t border-dashed border-gray-200 grid grid-cols-2 gap-2"></div>
+      </div>
+    </template>
+
+    <div id="sysLoader" class="fixed inset-0 bg-amber-600 z-50 flex flex-col items-center justify-center transition-opacity duration-500">
+       <div class="text-white text-6xl mb-4 animate-bounce"><i class="fa-solid fa-wallet"></i></div>
+       <h1 class="text-white text-3xl font-bold tracking-widest mb-8">DIVVY</h1>
+       <div class="loader ease-linear rounded-full border-4 border-t-4 border-white/20 border-t-white h-10 w-10"></div>
+       <button onclick="emergencyReset()" class="mt-8 text-white/70 text-xs underline hover:text-white">Tap to Reset App</button>
+    </div>
+
+    <div id="loginScreen" class="fixed inset-0 bg-amber-600 z-50 flex flex-col items-center justify-center p-6 hidden">
+        <div class="text-white text-7xl mb-6"><i class="fa-solid fa-wallet"></i></div>
+        <h1 class="text-white text-4xl font-bold tracking-widest mb-2">DIVVY</h1>
+        <p class="text-amber-100 text-sm mb-10 text-center font-medium">Split bills, keep friends.</p>
+        <div class="bg-white p-8 rounded-3xl w-full max-w-sm shadow-2xl">
+            <label class="block text-xs font-bold text-gray-400 uppercase mb-2 ml-1">Display Name</label>
+            <input type="text" id="loginName" placeholder="e.g. Top" class="w-full bg-gray-50 border-2 border-gray-100 p-4 rounded-2xl outline-none focus:border-amber-500 focus:bg-white transition mb-5 text-lg font-medium text-gray-700">
+            <label class="block text-xs font-bold text-gray-400 uppercase mb-2 ml-1">Email</label>
+            <input type="email" id="loginEmail" placeholder="name@example.com" class="w-full bg-gray-50 border-2 border-gray-100 p-4 rounded-2xl outline-none focus:border-amber-500 focus:bg-white transition mb-8 text-lg font-medium text-gray-700">
+            <button onclick="doLogin()" class="w-full bg-amber-600 text-white font-bold py-4 rounded-2xl hover:bg-amber-700 transition shadow-lg active:scale-95 text-lg">Let's Go</button>
+        </div>
+    </div>
+
+    <div id="appContainer" class="hidden">
+        <nav class="bg-amber-600 px-4 py-3 text-white shadow-lg sticky top-0 z-40">
+          <div class="container mx-auto flex justify-between items-center max-w-md">
+            <h1 class="text-xl font-bold cursor-pointer flex items-center gap-2 tracking-tight" onclick="showHome()">
+                <i class="fa-solid fa-wallet"></i> Divvy
+            </h1>
+            <div class="flex items-center gap-2">
+                <button onclick="openModal('modalFriend')" class="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 transition active:scale-95">
+                    <i class="fa-solid fa-user-group"></i> Friends
+                </button>
+                <div class="relative">
+                    <button onclick="toggleMenu()" class="flex items-center focus:outline-none transition transform active:scale-95">
+                        <div id="avt" class="w-9 h-9 rounded-full bg-white text-amber-600 border-2 border-white/50 flex items-center justify-center font-bold text-sm shadow-md uppercase"></div>
+                    </button>
+                    <div id="menu" class="hidden absolute right-0 mt-3 w-72 bg-white rounded-2xl shadow-2xl z-50 text-gray-800 border border-gray-100 animate-fade-in origin-top-right overflow-hidden">
+                        <div class="bg-gradient-to-br from-amber-500 to-amber-600 p-6 text-white text-center">
+                            <div id="menuAvt" class="w-16 h-16 rounded-full bg-white text-amber-600 flex items-center justify-center font-bold text-2xl shadow-lg mx-auto mb-3 border-4 border-white/30 uppercase">?</div>
+                            <h3 id="myNameDisplay" class="font-bold text-lg leading-tight">Guest</h3>
+                            <p id="uEmail" class="text-xs text-amber-100 opacity-90 mt-1 truncate px-4">...</p>
+                        </div>
+                        <div class="p-2 space-y-1">
+                            <a onclick="openMyQrModal()" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition cursor-pointer group">
+                                <div class="w-9 h-9 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center group-hover:bg-amber-200 transition"><i class="fa-solid fa-qrcode"></i></div>
+                                <div class="flex-1 font-medium">My QR Code</div>
+                                <i class="fa-solid fa-chevron-right text-xs text-gray-300"></i>
+                            </a>
+                            <a onclick="editMyName()" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition cursor-pointer group">
+                                <div class="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center group-hover:bg-blue-200 transition"><i class="fa-solid fa-pen"></i></div>
+                                <div class="flex-1 font-medium">Edit Name</div>
+                                <i class="fa-solid fa-chevron-right text-xs text-gray-300"></i>
+                            </a>
+                            <div class="h-px bg-gray-100 my-1 mx-4"></div>
+                            <a onclick="doLogout()" class="flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer group">
+                                <div class="w-9 h-9 rounded-full bg-red-100 text-red-500 flex items-center justify-center group-hover:bg-red-200 transition"><i class="fa-solid fa-repeat"></i></div>
+                                <div class="flex-1 font-semibold">Switch Account</div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+          </div>
+        </nav>
+
+        <div class="container mx-auto p-4 max-w-md">
+          <div id="scrTrips">
+            <div class="flex justify-between items-center mb-6 mt-2">
+              <h2 class="text-2xl font-bold text-gray-800">My Trips</h2>
+              <button onclick="openTripModal()" class="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-5 py-2.5 rounded-full shadow-lg hover:shadow-xl hover:from-amber-600 hover:to-amber-700 transition font-bold flex items-center gap-2 transform active:scale-95 text-sm">
+                  <i class="fa-solid fa-plus"></i> New Trip
+              </button>
+            </div>
+            <div id="conTrips" class="space-y-4"></div>
+          </div>
+
+          <div id="scrExps" class="hidden fade-in">
+            <button onclick="showHome()" class="mb-4 text-sm text-amber-600 font-bold hover:underline flex items-center gap-1 mt-2"><i class="fa-solid fa-arrow-left"></i> Back</button>
+            <div class="bg-white p-6 rounded-3xl shadow-sm mb-6 border border-gray-100 relative overflow-hidden">
+              <div class="absolute top-0 right-0 -mt-6 -mr-6 w-32 h-32 bg-amber-50 rounded-full opacity-60"></div>
+              <h2 id="tTitle" class="text-3xl font-bold text-gray-800 relative z-10 mb-2">Trip</h2>
+              <div id="tMemContainer" class="flex flex-wrap gap-1.5 mb-4 relative z-10"></div>
+              <div id="boxSum" class="bg-gray-50 p-4 rounded-xl text-sm hidden border border-gray-200 relative z-10"></div>
+              <button onclick="document.getElementById('boxSum').classList.toggle('hidden')" class="text-xs text-amber-600 font-bold mt-2 flex items-center gap-1 relative z-10 hover:text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg"><i class="fa-solid fa-chart-pie"></i> Toggle Summary</button>
+            </div>
+            <div class="flex justify-between items-end mb-4 px-1">
+              <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Transactions</span>
+              <button onclick="openExpModal()" class="bg-amber-100 text-amber-700 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-amber-200 transition flex items-center gap-2 active:scale-95 border border-amber-200"><i class="fa-solid fa-receipt"></i> Add Bill</button>
+            </div>
+            <div id="conExps" class="space-y-3 pb-20"></div>
+          </div>
+        </div>
+    </div>
+
+    <div id="modalMyQr" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-6 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-24 bg-amber-500"></div>
+            <div class="relative z-10">
+                <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg border-4 border-white text-amber-500 text-3xl"><i class="fa-solid fa-qrcode"></i></div>
+                <h3 class="text-xl font-bold text-gray-800 mb-1">My QR Code</h3>
+                <p class="text-xs text-gray-400 mb-6">Scan to pay me</p>
+                <div id="myQrDisplay" class="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-4 mb-6 flex items-center justify-center min-h-[220px] overflow-hidden">
+                    <p class="text-gray-400 text-sm">Loading...</p>
+                </div>
+                <label class="w-full bg-amber-600 text-white font-bold py-3.5 rounded-xl cursor-pointer hover:bg-amber-700 transition block shadow-lg active:scale-95"><i class="fa-solid fa-upload mr-2"></i> Upload / Change QR<input type="file" class="hidden" accept="image/*" onchange="uploadMyQr(this)"></label>
+            </div>
+            <button onclick="closeModal('modalMyQr')" class="absolute top-4 right-4 text-white/80 hover:text-white z-20"><i class="fa-solid fa-times text-2xl"></i></button>
+        </div>
+    </div>
+
+    <div id="modalFriend" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl flex flex-col h-[70vh]">
+            <h3 class="text-lg font-bold mb-4 flex justify-between items-center text-gray-800">
+                <span><i class="fa-solid fa-user-group text-amber-500 mr-2"></i>Friends</span> 
+                <button onclick="closeModal('modalFriend')"><i class="fa-solid fa-times text-gray-300 text-xl"></i></button>
+            </h3>
+            
+            <button onclick="addF()" class="w-full bg-amber-100 text-amber-700 font-bold py-3 rounded-xl mb-4 hover:bg-amber-200 transition flex items-center justify-center gap-2 active:scale-95 shadow-sm">
+                <i class="fa-solid fa-plus-circle"></i> Add New Friend
+            </button>
+
+            <ul id="conFriends" class="space-y-2 text-sm overflow-y-auto flex-1 pr-1"></ul>
+        </div>
+    </div>
+
+    <div id="modalTrip" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 class="text-xl font-bold mb-4 text-gray-800" id="mtTit">Trip</h3>
+            <input type="hidden" id="mtId">
+            <div class="mb-4">
+                <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Trip Name</label>
+                <input type="text" id="mtName" class="w-full border border-gray-200 bg-gray-50 p-3 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 transition">
+            </div>
+            <div class="mb-6">
+                <label class="text-xs font-bold text-gray-500 uppercase mb-2 block">Members</label>
+                <div id="mtMem" class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1"></div>
+            </div>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeModal('modalTrip')" class="text-gray-500 px-4 py-2 hover:bg-gray-100 rounded-lg font-bold text-sm">Cancel</button>
+                <button onclick="saveTrip()" class="bg-amber-600 text-white px-6 py-2 rounded-lg font-bold shadow-lg hover:bg-amber-700 transition text-sm active:scale-95">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalExp" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm overflow-y-auto max-h-[90vh] shadow-2xl">
+            <h3 class="text-lg font-bold mb-5 flex items-center gap-2 text-gray-800" id="meTit"><i class="fa-solid fa-receipt text-amber-500"></i> Expense</h3>
+            <input type="hidden" id="meId">
+            <div class="mb-4">
+                <label class="text-xs font-bold text-gray-400 uppercase block mb-1">Description</label>
+                <input type="text" id="meDesc" class="w-full border-b-2 border-gray-200 p-2 focus:border-amber-500 outline-none text-lg font-medium" placeholder="What is this for?">
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold text-gray-400 uppercase block mb-1">Amount</label>
+                <input type="number" id="meAmt" class="w-full border-b-2 border-gray-200 p-2 focus:border-amber-500 outline-none text-2xl font-mono font-bold text-gray-800" placeholder="0.00">
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold text-gray-400 uppercase block mb-1">Paid By</label>
+                <select id="mePayer" class="w-full bg-gray-50 border border-gray-200 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-amber-500"></select>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold text-gray-400 uppercase block mb-2">Split With</label>
+                <div id="meSplits" class="grid grid-cols-2 gap-2"></div>
+            </div>
+            <div class="mb-6">
+                <label class="text-xs font-bold text-gray-400 uppercase block mb-1">Attach Slip</label>
+                <input type="file" id="meFile" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100">
+            </div>
+            <div class="flex justify-end gap-3 pt-2 border-t border-gray-100">
+                <button onclick="closeModal('modalExp')" class="text-gray-500 px-4 py-2 hover:bg-gray-100 rounded-lg font-bold text-sm">Cancel</button>
+                <button type="button" onclick="saveExp(); return false;" class="bg-amber-600 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-amber-700 transition text-sm active:scale-95">
+                    Save Bill
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="modalAddFriend" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-fade-in relative overflow-hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="mfTit" class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus text-amber-500"></i> Add Friend
+                </h3>
+                <button onclick="closeModal('modalAddFriend'); openModal('modalFriend');" class="text-gray-300 hover:text-gray-500 transition">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <input type="hidden" id="mfId">
+            
+            <div class="space-y-4 mb-8">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1 mb-1 block tracking-wider">Friend's Name</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 text-sm"></i>
+                        <input type="text" id="mfName" placeholder="e.g. Somchai" 
+                            class="w-full bg-gray-50 border-2 border-gray-50 p-3.5 pl-11 rounded-2xl outline-none focus:border-amber-500 focus:bg-white transition text-gray-700 font-medium">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1 mb-1 block tracking-wider">Email (Optional for Sharing)</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 text-sm"></i>
+                        <input type="email" id="mfEmail" placeholder="friend@email.com" 
+                            class="w-full bg-gray-50 border-2 border-gray-50 p-3.5 pl-11 rounded-2xl outline-none focus:border-amber-500 focus:bg-white transition text-gray-700 font-medium">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-4">
+                <button onclick="closeModal('modalAddFriend'); openModal('modalFriend');" 
+                    class="flex-1 py-4 text-gray-400 font-bold text-sm hover:bg-gray-50 rounded-2xl transition">Cancel</button>
+                <button onclick="confirmFriendSave()" 
+                    class="flex-[2] bg-amber-600 text-white font-bold py-4 rounded-2xl hover:bg-amber-700 shadow-lg shadow-amber-200 transition active:scale-95 text-sm">
+                    Save Friend
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="hQr" class="hidden" onchange="upQr(this)">
+
+    <script>
+      let trips=[], friends=[], exps=[], curT=null, tmpQ=null, appUrl="", myQrUrl=null;
+      let myEmail = localStorage.getItem('divvy_email') || "";
+      let myName = localStorage.getItem('divvy_name') || "";
+
+      function fmt(n) { return n === 'Me' ? myName : n; }
+
+      setTimeout(() => { const l=document.getElementById('sysLoader'); if(l&&!l.classList.contains('hidden')){ document.getElementById('forceCloseBtn').classList.remove('hidden'); setTimeout(()=>{l.classList.add('hidden');},2000); } }, 4000);
+      function forceClose(){ document.getElementById('sysLoader').classList.add('hidden'); }
+      function emergencyReset() { localStorage.clear(); location.reload(); }
+
+      document.addEventListener('DOMContentLoaded', function(){ 
+          if(!myEmail || !myName) { document.getElementById('loginScreen').classList.remove('hidden'); } 
+          else { initApp(); }
+      });
+
+      function doLogin() {
+          const n = document.getElementById('loginName').value.trim(); 
+          const e = document.getElementById('loginEmail').value.trim();
+          if(!n || !e) return Swal.fire('Oops','Fill all fields','error');
+          
+          myName = n; myEmail = e; 
+          localStorage.setItem('divvy_name', myName); 
+          localStorage.setItem('divvy_email', myEmail);
+          
+          document.getElementById('loginScreen').classList.add('hidden'); 
+          
+          // บันทึก Profile และ Sync ตัวเองลง GlobalMembers (แบบเช็คซ้ำในตัว)
+          google.script.run.withSuccessHandler(() => {
+              initApp();
+          }).updateFullProfile(myName, myEmail, "");
+      }
+
+      // ปรับปรุงฟังก์ชันปิด Modal ให้ไม่ Error
+      function closeModal(id){ 
+          const el = document.getElementById(id);
+          if(el) el.classList.add('hidden'); 
+      }
+      function doLogout() {
+          Swal.fire({title:'Switch Account?',text:'Sign in as different user?',icon:'warning',showCancelButton:true,confirmButtonColor:'#d33'}).then(r=>{ if(r.isConfirmed){ localStorage.clear(); location.reload(); } });
+      }
+      function initApp() {
+          document.getElementById('appContainer').classList.remove('hidden');
+          if(document.getElementById('myNameDisplay')) document.getElementById('myNameDisplay').innerText = myName;
+          if(document.getElementById('uEmail')) document.getElementById('uEmail').innerText = myEmail;
+          if(document.getElementById('avt')) document.getElementById('avt').innerText = myName[0].toUpperCase();
+          if(document.getElementById('menuAvt')) document.getElementById('menuAvt').innerText = myName[0].toUpperCase();
+          loadAll();
+      }
+      function editMyName() {
+          Swal.fire({title:'Change Name',input:'text',inputValue:myName,showCancelButton:true,confirmButtonColor:'#d97706'}).then(r=>{
+              if(r.value && r.value.trim()){ myName=r.value.trim(); localStorage.setItem('divvy_name',myName); document.getElementById('myNameDisplay').innerText=myName; document.getElementById('avt').innerText=myName[0].toUpperCase(); document.getElementById('menuAvt').innerText=myName[0].toUpperCase(); toggleMenu(); drawTrips(); if(curT) goTrip(trips.indexOf(curT)); }
+          });
+      }
+
+      function loadAll(){
+          google.script.run.withSuccessHandler(d=>{ trips=d; drawTrips(); hideLoad(); }).getTrips(myEmail);
+          google.script.run.withSuccessHandler(d=>{ friends=d||[]; drawFriends(); }).getGlobalMembers(myEmail);
+          google.script.run.withSuccessHandler(url=>{ myQrUrl=url; }).getMyQr(myEmail);
+      }
+      function hideLoad(){ document.getElementById('sysLoader').classList.add('hidden'); }
+      function showHome() {
+          const scrTrips = document.getElementById('scrTrips');
+          const scrExps = document.getElementById('scrExps');
+          
+          if (scrTrips && scrExps) {
+              scrTrips.classList.remove('hidden');
+              scrExps.classList.add('hidden');
+              refreshTrips();
+          }
+      }
+      function toggleMenu(){ document.getElementById('menu').classList.toggle('hidden'); }
+      function openModal(id) {
+          const el = document.getElementById(id);
+          if (el) {
+              el.classList.remove('hidden');
+              el.classList.add('flex');
+          } else {
+              console.warn("ไม่พบ Element ID: " + id + " ระบบจึงข้ามการทำงานส่วนนี้เพื่อป้องกัน Error");
+          }
+      }
+
+      function openMyQrModal() { toggleMenu(); openModal('modalMyQr'); renderMyQr(); }
+      function renderMyQr() {
+          const div = document.getElementById('myQrDisplay');
+          if(myQrUrl) {
+              // ใช้ Base64 รูปจะขึ้น 100%
+              div.innerHTML = `<img src="${myQrUrl}" class="w-full h-full object-contain max-h-60 rounded-lg" onerror="this.onerror=null;this.src='';this.parentElement.innerHTML='<p class=text-red-400>Image Load Error</p>';">`;
+          } else {
+              div.innerHTML = `<div class="flex flex-col items-center text-gray-300"><i class="fa-solid fa-qrcode text-4xl mb-2"></i><p>No QR Code yet</p></div>`;
+          }
+      }
+      function uploadMyQr(inp) {
+          const f = inp.files[0]; if(!f) return;
+          const div = document.getElementById('myQrDisplay');
+          div.innerHTML = '<div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8"></div>';
+          const r = new FileReader();
+          r.onload = e => {
+              // Optimistic UI
+              div.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-contain max-h-60 rounded-lg opacity-50">`;
+              google.script.run
+              .withSuccessHandler(res => {
+                  if(res.status==='success') { 
+                      myQrUrl = res.url; // รับ Base64 กลับมา
+                      renderMyQr(); 
+                      Swal.fire({icon:'success',title:'Saved!',timer:1000,showConfirmButton:false}); 
+                  } else {
+                      renderMyQr();
+                      Swal.fire('Error', res.message, 'error');
+                  }
+              })
+              .saveMyQr({data:e.target.result.split(',')[1],mimeType:f.type,name:f.name}, myEmail);
+          }; r.readAsDataURL(f);
+      }
+
+      function refreshTrips(){ google.script.run.withSuccessHandler(d=>{ trips=d; drawTrips(); }).getTrips(myEmail); }
+      // แก้ไขในฟังก์ชัน drawTrips (แสดงในการ์ดหน้าแรก)
+      // แก้ไขหน้าแรก: ป้องกัน EA (You) ซ้ำกัน
+      // ฟังก์ชันช่วยหาชื่อจากอีเมลสมาชิก
+      // 1. ฟังก์ชันตัวช่วยดึงชื่อ (ใช้ร่วมกันทั้งแอป)
+      function getMemberDisplayName(nameFromSheet, emailFromSheet) {
+          if (!emailFromSheet) return nameFromSheet;
+          
+          // กฎที่ 1: ถ้าเมลคือเรา -> ขึ้นชื่อเรา (You)
+          if (emailFromSheet.toLowerCase() === myEmail.toLowerCase()) {
+              return myName + " (You)";
+          }
+          
+          // กฎที่ 2: ถ้าไม่ใช่เรา -> ไปหาในรายชื่อเพื่อนที่เรามี (ซึ่งกรองตาม Owner มาแล้ว)
+          //
+          if (friends && friends.length > 0) {
+              const friend = friends.find(f => f.email && f.email.toLowerCase() === emailFromSheet.toLowerCase());
+              if (friend) return friend.name;
+          }
+
+          // กฎที่ 3: กรณีหาในเพื่อนไม่เจอ (เช่น โหลดไม่ทัน) ให้ใช้ชื่อที่บันทึกมาในทริปเลย 
+          // แต่ถ้ามันบันทึกมาว่า "Me" ให้เปลี่ยนเป็นชื่อ "Itim" (สำหรับเครื่องเพื่อน)
+          if (nameFromSheet === 'Me' && emailFromSheet.toLowerCase() === "t.metachuchok@gmail.com") return "Itim";
+          
+          return nameFromSheet === 'Me' ? "Member" : nameFromSheet;
+      }
+
+      // 2. ฟังก์ชันหน้า Transaction (ต้องเหมือนกับหน้าแรก)
+      
+      
+
+      function drawTrips() {
+          const c = document.getElementById('conTrips'); 
+          if(!c) return;
+          c.innerHTML = '';
+          if(!trips || trips.length === 0) { /* ...โชว์ No Trips... */ return; }
+
+          trips.forEach((t, i) => {
+              const el = document.getElementById('tpl-trip').content.cloneNode(true);
+              el.querySelector('.t-name').textContent = t.name;
+              
+              const names = t.members ? t.members.toString().split(',').map(x => x.trim()) : []; 
+              const emails = t.emails ? t.emails.toString().split(',').map(x => x.trim()) : [];
+              
+              let tags = ''; 
+              names.forEach((name, idx) => { 
+                  const mEmail = emails[idx] || "";
+                  const displayName = getMemberDisplayName(name, mEmail);
+                  const isMe = displayName.includes("(You)");
+
+                  tags += `<span class="inline-block ${isMe ? 'bg-amber-100 border-amber-200 text-amber-800' : 'bg-gray-50 border-gray-100 text-gray-500'} text-[10px] px-2 py-1 rounded-full border font-bold mr-1 mb-1">
+                      ${displayName}
+                  </span>`; 
+              });
+              el.querySelector('.t-mem-container').innerHTML = tags;
+              el.querySelector('.card-trip').onclick = () => goTrip(i);
+              c.appendChild(el);
+          });
+      }
+
+      
+
+      
+      
+      // FRIENDS
+      function refreshFriends(){ 
+          google.script.run.withSuccessHandler(d=>{ 
+              friends=d||[]; 
+              drawFriends(); 
+          }).getGlobalMembers(myEmail); 
+      }
+      function drawFriends(){
+          const c=document.getElementById('conFriends'); c.innerHTML='';
+          if(!friends.length) { c.innerHTML='<p class="text-center text-gray-400 text-xs mt-4">No friends.</p>'; return; }
+          const tpl=document.getElementById('tpl-friend');
+          friends.forEach(f=>{
+              const el=tpl.content.cloneNode(true); 
+              el.querySelector('.f-name').innerHTML = f.name + (f.email ? `<br><span class='text-[10px] text-gray-400 font-normal'>${f.email}</span>` : '');
+              el.querySelector('.btn-edit').onclick=()=>editF(f.id,f.name,f.email); el.querySelector('.btn-del').onclick=()=>delF(f.id);
+              el.querySelector('.btn-up').onclick=()=>{tmpQ=f.id;document.getElementById('hQr').click();};
+              const bq=el.querySelector('.btn-qr'); if(f.qr){ bq.classList.add('bg-amber-100','text-amber-600'); bq.onclick=()=>showSlip(f.qr); } else bq.onclick=null;
+              c.appendChild(el);
+          });
+      }
+      
+      // เปลี่ยนฟังก์ชัน addF ให้เรียกใช้ Modal ใหม่
+      function addF() {
+          const friendModal = document.getElementById('modalFriend');
+          if(friendModal) friendModal.classList.add('hidden'); // ปิดแบบปลอดภัย
+          
+          document.getElementById('mfTit').innerHTML = '<i class="fa-solid fa-user-plus text-amber-500"></i> Add Friend';
+          document.getElementById('mfId').value = "";
+          document.getElementById('mfName').value = "";
+          document.getElementById('mfEmail').value = "";
+          openModal('modalAddFriend');
+      }
+
+      function editF(id, oldName, oldEmail) {
+          const friendModal = document.getElementById('modalFriend');
+          if(friendModal) friendModal.classList.add('hidden');
+          
+          document.getElementById('mfTit').innerHTML = '<i class="fa-solid fa-user-pen text-amber-500"></i> Edit Friend';
+          document.getElementById('mfId').value = id;
+          document.getElementById('mfName').value = oldName;
+          document.getElementById('mfEmail').value = oldEmail || "";
+          openModal('modalAddFriend');
+      }
+
+      
+
+      // ฟังก์ชันใหม่สำหรับกดเซฟจาก Modal
+      function confirmFriendSave() {
+          const id = document.getElementById('mfId').value;
+          const n = document.getElementById('mfName').value.trim();
+          const e = document.getElementById('mfEmail').value.trim();
+
+          if (!n) return Swal.fire('Oops', 'Name is required', 'warning');
+
+          closeModal('modalAddFriend');
+          openModal('modalFriend');
+
+          if (id) {
+              // Mode: Edit
+              const f = friends.find(x => x.id === id);
+              if (f) { f.name = n; f.email = e; }
+              drawFriends();
+              google.script.run.withSuccessHandler(() => refreshFriends()).editGlobalMember(id, n, e);
+          } else {
+              // Mode: Add (Optimistic)
+              if (!Array.isArray(friends)) friends = [];
+              const tempId = 'tmpF_' + Date.now();
+              friends.push({ id: tempId, name: n, email: e, qr: '' });
+              drawFriends();
+              google.script.run.withSuccessHandler(res => {
+                  const f = friends.find(x => x.id === tempId);
+                  if (f && res.newId) { f.id = res.newId; }
+              }).addGlobalMember(n, e, myEmail);
+          }
+      }
+      function delF(id){ 
+          Swal.fire({title:'Delete?',icon:'warning',showCancelButton:true,confirmButtonColor:'#d33'}).then(r=>{ 
+              if(r.isConfirmed){ 
+                  friends=friends.filter(x=>x.id!==id); 
+                  drawFriends(); 
+                  google.script.run.deleteGlobalMember(id); 
+              } 
+          }); 
+      }
+      function upQr(i){ const f=i.files[0]; if(!f)return; const t=Swal.mixin({toast:true,position:'top-end',showConfirmButton:false,timer:2000}); t.fire({icon:'info',title:'Uploading...'}); const r=new FileReader(); r.onload=e=>{ google.script.run.withSuccessHandler(()=>{refreshFriends();t.fire({icon:'success',title:'Saved'});}).saveMemberQR(tmpQ,{data:e.target.result.split(',')[1],mimeType:f.type,name:f.name}); }; r.readAsDataURL(f); }
+
+      function openTripModal(){ document.getElementById('mtTit').innerText="New Trip"; document.getElementById('mtId').value=""; document.getElementById('mtName').value=""; drawMemSel([]); openModal('modalTrip'); }
+      function editTrip(i){ document.getElementById('mtTit').innerText="Edit Trip"; document.getElementById('mtId').value=trips[i].id; document.getElementById('mtName').value=trips[i].name; drawMemSel(trips[i].members.split(',')); openModal('modalTrip'); }
+      function drawMemSel(sel){
+          const c = document.getElementById('mtMem'); 
+          if(!c) return;
+          c.innerHTML = '';
+          const isNew = document.getElementById('mtId').value === "";
+          
+          // 1. วาดตัวเราเองเสมอ
+          const meChk = (isNew || sel.includes(myName) || sel.includes('Me')) ? 'checked' : '';
+          let h = `
+              <label class="flex items-center gap-2 text-sm p-2 border border-amber-200 bg-amber-50 rounded-lg cursor-pointer font-bold text-amber-800 shadow-sm">
+                  <input type="checkbox" value="Me" ${meChk} class="accent-amber-600 w-4 h-4"> 
+                  ${myName} (You)
+              </label>`;
+
+          // 2. วาดเพื่อน (กรองตัวเราออกโดยเช็คทั้ง ชื่อ และ อีเมล)
+          if(friends && friends.length > 0) {
+              friends.forEach(f => {
+                  // ถ้าเมลตรงกับเรา หรือชื่อตรงกับเราเป๊ะๆ ไม่ต้องโชว์ซ้ำ
+                  if(f.email === myEmail || f.name === myName) return;
+
+                  const chk = sel.includes(f.name) ? 'checked' : '';
+                  h += `
+                      <label class="flex items-center gap-2 text-sm p-2 border border-gray-100 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                          <input type="checkbox" value="${f.name}" ${chk} class="accent-amber-600 w-4 h-4"> 
+                          ${f.name}
+                      </label>`;
+              });
+          }
+          c.innerHTML = h;
+      }
+      function saveTrip(){
+          const id=document.getElementById('mtId').value; const name=document.getElementById('mtName').value;
+          const ms=Array.from(document.querySelectorAll('#mtMem input:checked')).map(x=>x.value).join(',');
+          if(!name||!ms) return Swal.fire('Oops','Fill all','warning');
+          closeModal('modalTrip');
+          if(id){ 
+              const k=trips.findIndex(x=>x.id===id); 
+              if(k>=0){ trips[k].name=name; trips[k].members=ms; } 
+              drawTrips();
+              google.script.run.editTrip(id,name,ms);
+          } else { 
+              const tempId = 'tmp'+Date.now();
+              trips.unshift({id:tempId, name:name, members:ms}); 
+              drawTrips();
+              google.script.run.withSuccessHandler(res => {
+                  if(res.newId) { const t = trips.find(x => x.id === tempId); if(t) t.id = res.newId; }
+              }).createTrip(name,ms,myEmail);
+          }
+      }
+      function delTrip(id){ Swal.fire({title:'Delete?',icon:'warning',showCancelButton:true,confirmButtonColor:'#d33'}).then(r=>{ if(r.isConfirmed){ trips=trips.filter(x=>x.id!==id); drawTrips(); google.script.run.deleteTrip(id); } }); }
+
+      
+      
+      function fetchExpsSilent() { google.script.run.withSuccessHandler(data => { exps = data; drawExps(exps); }).getExpenses(curT.id); }
+
+      
+      function showSlip(url) {
+          if(!url) return;
+          Swal.fire({ imageUrl: url, imageAlt: 'Slip', showConfirmButton: true, confirmButtonText: 'Close', confirmButtonColor: '#d97706', width: '90%', background: '#fff', backdrop: `rgba(0,0,0,0.8)` });
+      }
+
+      function goTrip(i) {
+          // 1. ตั้งค่าทริปปัจจุบัน
+          curT = trips[i]; 
+          if(!curT) return;
+
+          // 2. จัดการรายชื่อและอีเมลสมาชิกให้เป็น Array
+          curT.ma = (curT.members || "").toString().split(',').map(s => s.trim());
+          curT.emails = (curT.emails || "").toString().split(',').map(s => s.trim());
+          
+          // 3. สลับหน้าจอ
+          document.getElementById('scrTrips').classList.add('hidden'); 
+          document.getElementById('scrExps').classList.remove('hidden');
+          document.getElementById('tTitle').innerText = curT.name;
+          
+          // 4. วาดป้ายชื่อสมาชิก
+          let tags = ''; 
+          curT.ma.forEach((name, idx) => {
+              const mEmail = curT.emails[idx] || "";
+              const displayName = getMemberDisplayName(name, mEmail);
+              const isMe = displayName.includes("(You)");
+              tags += `<span class="inline-block ${isMe ? 'bg-amber-100 border-amber-200 text-amber-800' : 'bg-gray-50 border-gray-100 text-gray-500'} text-[10px] px-2 py-1 rounded-full border font-bold mr-1">${displayName}</span>`; 
+          });
+          
+          document.getElementById('tMemContainer').innerHTML = tags; 
+          loadExps(); // โหลด Transactions
+      }
+
+      function openExpModal(){
+          // ตรวจสอบข้อมูลแบบยืดหยุ่นขึ้น
+          if(!curT) {
+              Swal.fire('Error', 'Please select a trip first', 'error');
+              return;
+          }
+          
+          const members = curT.ma || [];
+          const emails = curT.emails || [];
+
+          document.getElementById('meTit').innerHTML = 'Add Bill';
+          document.getElementById('meId').value = "";
+          document.getElementById('meDesc').value = "";
+          document.getElementById('meAmt').value = "";
+          
+          // วาดฟอร์มให้เลือกคนจ่าย/คนหาร
+          drawExpForm(members, emails); 
+          
+          openModal('modalExp');
+      }
+      function editExp(i) {
+          const e = exps[i];
+          document.getElementById('meTit').innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Edit Bill';
+          document.getElementById('meId').value = e.id;
+          document.getElementById('meDesc').value = e.desc;
+          document.getElementById('meAmt').value = e.amount;
+          
+          // ป้องกัน Error โดยเช็คการมีอยู่ของข้อมูลก่อน split
+          const emailsStr = (curT && curT.emails) ? curT.emails.toString() : "";
+          const emails = emailsStr ? emailsStr.split(',').map(em => em.trim()) : [];
+          
+          drawExpForm(curT.ma || [], emails);
+          
+          document.getElementById('mePayer').value = e.payer;
+          
+          const oldSplitters = e.splitters ? e.splitters.toString().split(',') : [];
+          document.querySelectorAll('input[name="splitMem"]').forEach(cb => {
+              cb.checked = oldSplitters.includes(cb.value);
+          });
+
+          openModal('modalExp');
+      }
+      
+      function drawExpForm(members, emails) {
+          const pSel = document.getElementById('mePayer');
+          const sDiv = document.getElementById('meSplits');
+          if(!pSel || !sDiv) return;
+
+          let pH = ''; // สำหรับคนจ่าย (Dropdown)
+          let sH = ''; // สำหรับคนหาร (Checkboxes)
+
+          members.forEach((m, idx) => {
+              const mEmail = emails[idx] || "";
+              // ใช้ฟังก์ชันหาชื่อที่ถูกต้อง (เหมือนหน้า My Trips)
+              const dName = getMemberDisplayName(m, mEmail);
+              
+              // วาด Dropdown คนจ่าย
+              pH += `<option value="${dName}">${dName}</option>`;
+              
+              // วาด Checkbox คนหาร
+              sH += `
+                  <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50 mb-2">
+                      <input type="checkbox" name="splitMem" value="${dName}" checked class="w-4 h-4 accent-amber-600">
+                      <span class="text-sm">${dName}</span>
+                  </label>`;
+          });
+
+          pSel.innerHTML = pH;
+          sDiv.innerHTML = sH;
+      }
+      // 1. ฟังก์ชัน Save: บันทึกลงชีทและอัปเดตหน้าจอทันที
+      function saveExp() {
+          const id = document.getElementById('meId').value;
+          const desc = document.getElementById('meDesc').value.trim();
+          const amt = parseFloat(document.getElementById('meAmt').value);
+          const payer = document.getElementById('mePayer').value;
+          const splits = Array.from(document.querySelectorAll('input[name="splitMem"]:checked')).map(cb => cb.value);
+          const fileInput = document.getElementById('meFile'); // ช่องแนบสลิป
+
+          if (!desc || isNaN(amt) || splits.length === 0) {
+              return Swal.fire('Error', 'กรุณากรอกข้อมูลให้ครบ', 'error');
+          }
+
+          Swal.fire({ title: 'Saving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+          // กรณีมีการเลือกไฟล์สลิป
+          if (fileInput && fileInput.files.length > 0) {
+              const file = fileInput.files[0];
+              const reader = new FileReader();
+              reader.onload = function(e) {
+                  const payload = {
+                      data: e.target.result.split(',')[1],
+                      mimeType: file.type,
+                      name: file.name
+                  };
+                  executeSave(id, desc, amt, payer, splits.join(','), payload);
+              };
+              reader.readAsDataURL(file);
+          } else {
+              // กรณีไม่มีการแนบไฟล์
+              executeSave(id, desc, amt, payer, splits.join(','), null);
+          }
+      }
+
+      function executeSave(id, desc, amt, payer, splitters, fileObj) {
+          const obj = {
+              id: id || "",
+              tripId: curT.id,
+              desc: desc,
+              amt: amt,
+              payer: payer,
+              splitters: splitters,
+              file: fileObj // ส่งข้อมูลไฟล์ไปหลังบ้าน
+          };
+
+          google.script.run
+              .withSuccessHandler(() => {
+                  Swal.fire({ icon: 'success', title: 'Saved!', timer: 1000, showConfirmButton: false });
+                  closeModal('modalExp');
+                  loadExps(); // โหลดรายการใหม่มาโชว์
+              })
+              .withFailureHandler(err => Swal.fire('Error', err.message, 'error'))
+              .saveExpense(obj);
+      }
+
+      function runSaveExpense(id, desc, amt, payer, splitters, filePayload) {
+          const obj = {
+              id: id || null,
+              tripId: curT.id,
+              desc: desc,
+              amt: amt,
+              payer: payer,
+              splitters: splitters.join(','),
+              file: filePayload // ส่งไฟล์ไปด้วย
+          };
+
+          google.script.run
+              .withSuccessHandler(() => {
+                  closeModal('modalExp');
+                  loadExps();
+                  Swal.fire({ icon: 'success', title: 'Saved!', timer: 1000, showConfirmButton: false });
+              })
+              .withFailureHandler(err => Swal.fire('Error', err.message, 'error'))
+              .saveExpense(obj);
+      }
+
+      // 2. ฟังก์ชัน Load: ดึงข้อมูลจากชีทมาวาดหน้าจอ
+      function loadExps() {
+          const c = document.getElementById('conExps');
+          if (c) c.innerHTML = '<div class="skeleton h-24 rounded-xl mb-4"></div>';
+          
+          if (!curT || !curT.id) return;
+
+          google.script.run
+              .withSuccessHandler(data => {
+                  // บังคับให้เป็น Array ว่างถ้าไม่มีข้อมูล เพื่อป้องกัน Error .length
+                  drawExps(data || []); 
+              })
+              .getExpenses(curT.id);
+      }
+
+      function drawExps(d) {
+          exps = d || []; 
+          const c = document.getElementById('conExps');
+          if (!c) return;
+          c.innerHTML = '';
+          
+          if (typeof calcSum === "function") calcSum(); 
+
+          if (exps.length === 0) {
+              c.innerHTML = '<div class="text-center mt-10 text-gray-300"><i class="fa-solid fa-receipt text-4xl mb-2"></i><p>No bills yet.</p></div>';
+              return;
+          }
+
+          const tpl = document.getElementById('tpl-exp');
+          exps.forEach((e, i) => {
+              const el = tpl.content.cloneNode(true);
+              el.querySelector('.e-desc').textContent = e.desc;
+              el.querySelector('.e-amt').textContent = Number(e.amount).toLocaleString();
+              
+              // กำหนดชื่อคนจ่ายหลัก
+              const payerDisplayName = (e.payer === 'Me' || e.payer === myName) ? myName : e.payer;
+              el.querySelector('.e-payer').textContent = payerDisplayName + ' Paid';
+              
+              // ปุ่ม Edit / Delete
+              el.querySelector('.btn-edit').onclick = () => editExp(i);
+              el.querySelector('.btn-del').onclick = () => delExp(e.id);
+              
+              // --- ส่วนที่ 1: จัดการสลิปของบิลหลัก ---
+              const bSlip = el.querySelector('.btn-slip');
+              if (e.slipUrl && bSlip) {
+                  bSlip.classList.remove('hidden');
+                  // ใช้ chkSlip เพื่อให้หน้าตาตอนดูรูปสวยเหมือนกัน
+                  bSlip.onclick = () => chkSlip(e.id, payerDisplayName, e.slipUrl);
+              }
+
+              // --- ส่วนที่ 2: จัดการสถานะการจ่ายของสมาชิก (Pay/Paid) ---
+              const paidArray = e.paidMembers ? e.paidMembers.toString().split(',') : [];
+              const memSlips = e.memberSlips || {}; 
+              const s = e.splitters ? e.splitters.toString().split(',') : [];
+              const cl = el.querySelector('.e-list');
+              
+              s.forEach(m => {
+                  if (m === e.payer || m === payerDisplayName) return;
+                  
+                  const isPaid = paidArray.includes(m);
+                  const slipUrl = memSlips[m] || null;
+                  const amountPerPerson = e.amount / (s.length || 1);
+                  
+                  const div = document.createElement('div');
+                  
+                  if (isPaid) {
+                      // ✅ สถานะ PAID (สีเขียว) - เปลี่ยนกลับไม่ได้
+                      div.className = 'px-3 py-2 border border-green-200 bg-green-50 rounded-xl text-[11px] flex justify-between items-center cursor-pointer hover:bg-green-100 transition mb-1 shadow-sm';
+                      div.innerHTML = `
+                          <span class="font-bold text-gray-700 flex items-center gap-2">
+                              ${m} ${slipUrl ? '<i class="fa-solid fa-image text-green-500"></i>' : '<i class="fa-solid fa-paperclip text-gray-300"></i>'}
+                          </span>
+                          <span class="font-bold text-green-600 flex items-center gap-1 uppercase tracking-tighter">
+                              <i class="fa-solid fa-check-circle"></i> Paid
+                          </span>`;
+                      
+                      // ถ้ามีสลิปแล้ว -> ดูรูป | ถ้ายังไม่มีแต่ Paid แล้ว -> แนบเพิ่ม
+                      div.onclick = () => slipUrl ? chkSlip(e.id, m, slipUrl) : doPayUI(e.id, m, e.payer, amountPerPerson);
+                      
+                  } else {
+                      // 🟠 สถานะ PAY (สีส้ม)
+                      div.className = 'px-3 py-2 border border-gray-100 bg-white rounded-xl text-[11px] flex justify-between items-center cursor-pointer hover:bg-amber-50 transition mb-1 shadow-sm';
+                      div.innerHTML = `
+                          <span class="font-medium text-gray-600">${m}</span>
+                          <span class="font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100 uppercase tracking-tighter">Pay</span>`;
+                      
+                      div.onclick = () => doPayUI(e.id, m, e.payer, amountPerPerson);
+                  }
+                  cl.appendChild(div);
+              });
+              c.appendChild(el);
+          });
+      }
+      // ★ FIXED: Optimistic Delete Transaction
+      // ★ FIXED: Super Optimistic Delete (หายทันทีแบบไม่รอ)
+      // ★ FIXED: Super Optimistic Delete (วาดใหม่ทันทีโดยไม่มีรายการที่ลบ)
+      function delExp(id) {
+          Swal.fire({
+              title: 'ลบบิลนี้ใช่ไหม?',
+              text: "เมื่อลบแล้วยอดหารของเพื่อนจะหายไปด้วย",
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonColor: '#ef4444',
+              confirmButtonText: 'ใช่, ลบเลย!'
+          }).then((result) => {
+              if (result.isConfirmed) {
+                  // 1. ลบออกจากหน้าจอทันที
+                  exps = exps.filter(x => x.id !== id);
+                  drawExps(exps);
+                  
+                  // 2. สั่งลบใน Google Sheet
+                  google.script.run.withSuccessHandler(() => {
+                      const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                      Toast.fire({ icon: 'success', title: 'Deleted' });
+                  }).deleteExpense(id); // มั่นใจว่าใน Code.gs มีฟังก์ชันชื่อนี้
+              }
+          });
+      }
+      // 1. ฟังก์ชันแสดงหน้าต่างจ่ายเงิน (มีช่องแนบสลิป)
+      // 1. ฟังก์ชันแสดงหน้าต่างยืนยันการจ่าย (พร้อมช่องแนบสลิป)
+      // 1. หน้าต่างยืนยันการจ่าย (ดีไซน์สวย + แนบสลิปได้)
+      // 1. หน้าต่างยืนยันการจ่าย (แก้ไข Logic การดึงไฟล์ให้แม่นยำ)
+      function doPayUI(eid, memberName, payerName, amount) {
+          // แก้ไข QR Code ไม่ขึ้น: ตัดคำว่า (You) ออกก่อนไปค้นหา
+          let realName = payerName.replace(' (You)', '').trim();
+          if (realName === 'Me') realName = myName;
+
+          // ค้นหา QR Code
+          let targetQr = null;
+          if (realName === myName) {
+              targetQr = myQrUrl; 
+          } else {
+              const friend = friends.find(f => f.name === realName);
+              if (friend && friend.qr) targetQr = friend.qr;
+          }
+
+          let qrHtml = targetQr 
+              ? `<div class="mb-4 text-center"><p class="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Scan to Pay</p><div class="inline-block p-2 bg-white rounded-2xl border border-gray-200 shadow-sm"><img src="${targetQr}" class="w-40 h-40 object-contain rounded-lg cursor-pointer" onclick="showSlip('${targetQr}')"></div><p class="text-[10px] text-gray-400 mt-2">QR ของ ${realName}</p></div>`
+              : `<div class="mb-4 text-center p-4 bg-gray-50 border border-dashed border-gray-300 rounded-xl"><i class="fa-solid fa-qrcode text-gray-300 text-3xl mb-2"></i><p class="text-xs text-gray-400">ไม่พบ QR Code ของ ${realName}</p></div>`;
+
+          Swal.fire({
+              title: `<span class="text-3xl font-bold text-gray-800">฿${Math.round(amount).toLocaleString()}</span>`,
+              html: `
+                  ${qrHtml}
+                  <div class="bg-amber-50 rounded-xl p-3 mb-4 border border-amber-100 text-sm">
+                      <div class="flex justify-between items-center mb-1 border-b border-amber-200 pb-1">
+                          <span class="text-xs text-gray-500 font-bold uppercase">To</span>
+                          <span class="font-bold text-amber-700">${realName}</span>
+                      </div>
+                      <div class="flex justify-between items-center">
+                          <span class="text-xs text-gray-500 font-bold uppercase">From</span>
+                          <span class="font-bold text-gray-700">${memberName}</span>
+                      </div>
+                  </div>
+                  <div class="text-left">
+                      <label class="text-xs font-bold text-gray-400 uppercase mb-2 block ml-1"><i class="fa-solid fa-paperclip mr-1"></i> Attach Slip</label>
+                      <input type="file" id="paySlipFile" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200 cursor-pointer bg-gray-50 rounded-xl border border-gray-200">
+                  </div>
+              `,
+              showCancelButton: true,
+              confirmButtonText: 'โอนแล้ว (แนบสลิป)',
+              confirmButtonColor: '#10b981',
+              cancelButtonText: 'ยกเลิก',
+              preConfirm: () => {
+                  // ★ จุดสำคัญ: เช็คว่ามีไฟล์จริงไหม ถ้ามีให้ส่งไฟล์แรก ถ้าไม่มีให้ส่ง null
+                  const fileInput = document.getElementById('paySlipFile');
+                  return (fileInput && fileInput.files.length > 0) ? fileInput.files[0] : null;
+              }
+          }).then((result) => {
+              if (result.isConfirmed) {
+                  sendPay(eid, memberName, result.value);
+              }
+          });
+      }
+
+      // 2. ฟังก์ชันส่งข้อมูล (เพิ่มตัวป้องกัน Error readAsDataURL)
+      function sendPay(eid, memberName, file) {
+          Swal.fire({ 
+              title: 'Processing...',
+              html: 'กำลังบันทึกข้อมูลและอัปโหลดสลิป',
+              allowOutsideClick: false,
+              didOpen: () => Swal.showLoading() 
+          });
+
+          // ★ Safety Check: ต้องเป็นไฟล์จริงๆ เท่านั้นถึงจะอ่าน
+          if (file && (file instanceof Blob || file instanceof File)) {
+              const reader = new FileReader();
+              reader.onload = function(e) {
+                  const base64Data = e.target.result.split(',')[1]; 
+                  const payload = {
+                      data: base64Data,
+                      mimeType: file.type,
+                      name: file.name
+                  };
+                  runGoogleSave(eid, memberName, payload);
+              };
+              reader.readAsDataURL(file); // บรรทัดนี้จะไม่ Error แล้วเพราะเช็ค type มาแล้ว
+          } else {
+              // กรณีไม่มีไฟล์ หรือไฟล์เสีย ให้ส่ง null ไป
+              runGoogleSave(eid, memberName, null);
+          }
+      }
+
+      // ฟังก์ชันย่อยสำหรับส่งไป Google (เพื่อลด code ซ้ำซ้อน)
+      function runGoogleSave(eid, memberName, payload) {
+          google.script.run
+              .withSuccessHandler(() => {
+                  Swal.fire({ icon: 'success', title: 'Paid!', text: 'บันทึกเรียบร้อย', timer: 1500, showConfirmButton: false });
+                  loadExps(); 
+              })
+              .withFailureHandler(err => Swal.fire('Error', 'เกิดข้อผิดพลาด: ' + err.message, 'error'))
+              .updateMemberPayment(eid, memberName, payload);
+      }
+
+      // 3. ฟังก์ชันเปิดดูสลิป (แถมให้ด้วย เผื่อทำหาย)
+      // --- แก้ไขฟังก์ชัน chkSlip เดิมให้เป็นชุดนี้ ---
+
+      function chkSlip(eid, memberName, slipUrl) {
+          if (!slipUrl) {
+              Swal.fire({ icon: 'info', title: 'No Slip', text: `${memberName} ยืนยันการจ่ายปากเปล่า`, confirmButtonColor: '#10b981' });
+              return;
+          }
+
+          // แปลงลิงก์ Drive ให้เป็น Direct Link เพื่อโชว์ในแอป
+          let finalUrl = slipUrl;
+          if (slipUrl.includes('drive.google.com')) {
+              const fileId = slipUrl.split('id=')[1] || slipUrl.split('/d/')[1]?.split('/')[0];
+              if (fileId) finalUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+          }
+
+          Swal.fire({
+              title: `<span class="text-lg">หลักฐานของ ${memberName}</span>`,
+              imageUrl: finalUrl,
+              imageAlt: 'Slip',
+              width: '400px',
+              imageClass: 'rounded-xl shadow-lg border border-gray-100',
+              confirmButtonText: 'Close',
+              confirmButtonColor: '#d97706',
+              background: '#fff'
+          });
+      }
+      function calcSum() {
+          const box = document.getElementById('boxSum');
+          if (!box) return;
+          if (!exps || exps.length === 0) {
+              box.innerHTML = '<div class="text-center text-gray-400 py-2">No expenses yet.</div>';
+              return;
+          }
+
+          let summary = {}; 
+          exps.forEach(e => {
+              const amt = parseFloat(e.amount);
+              const payer = e.payer;
+              const splitters = e.splitters ? e.splitters.toString().split(',') : [];
+              const perPerson = amt / splitters.length;
+
+              splitters.forEach(member => {
+                  if (member !== payer) {
+                      const key = `${member} owes ${payer}`;
+                      summary[key] = (summary[key] || 0) + perPerson;
+                  }
+              });
+          });
+
+          let html = '<div class="space-y-2">';
+          let hasData = false;
+          for (let debt in summary) {
+              if (summary[debt] > 0.1) {
+                  html += `<div class="flex justify-between border-b border-gray-100 pb-1">
+                              <span class="text-gray-600">${debt}</span>
+                              <span class="font-bold text-amber-600">฿${Math.round(summary[debt]).toLocaleString()}</span>
+                          </div>`;
+                  hasData = true;
+              }
+          }
+          html += '</div>';
+          box.innerHTML = hasData ? html : '<div class="text-green-500 font-bold text-center">All Settled! 🎉</div>';
+      }
+
+      // แก้ไข Error classList
+      setTimeout(() => { 
+          const l = document.getElementById('sysLoader'); 
+          if (l) { 
+              l.classList.add('hidden'); 
+          } 
+      }, 3000);
+
+      
+
+
+    </script>
+
+    
+  </body>
+</html>
